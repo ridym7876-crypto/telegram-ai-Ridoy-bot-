@@ -3,7 +3,7 @@ require("@google/generative-ai");
 
 const genAI =
 new GoogleGenerativeAI(
-process.env.GEMINI_API_KEY
+process.env.AIzaSyBBBFrHHjPTHgjBJbZu0Nr-WfK5mu9zqSY
 );
 
 async function chat(prompt){
