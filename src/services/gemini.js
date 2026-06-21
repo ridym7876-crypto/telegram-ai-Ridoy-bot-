@@ -1,4 +1,5 @@
 const { GoogleGenAI } = require("@google/genai");
+const base44 = require("./base44");
 
 class GeminiService {
   constructor() {
@@ -7,6 +8,11 @@ class GeminiService {
 
   async generateText(prompt, useSearch = false) {
     try {
+      // Prioritize Base44 for text generation if configured, or use as fallback
+      if (process.env.USE_BASE44 === 'true' || !process.env.GEMINI_API_KEY) {
+        return await base44.callAI(prompt);
+      }
+
       const config = useSearch ? { tools: [{ googleSearch: {} }] } : {};
       const response = await this.ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -16,7 +22,12 @@ class GeminiService {
       return response.text;
     } catch (error) {
       console.error("Text Generation Error:", error);
-      throw error;
+      // Fallback to Base44 if Gemini fails
+      try {
+        return await base44.callAI(prompt);
+      } catch (fallbackError) {
+        throw error;
+      }
     }
   }
 

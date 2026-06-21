@@ -10,7 +10,9 @@ This is a Telegram bot that leverages AI to provide various media generation and
 - **Image Editing**: Edit existing images based on textual commands.
 - **Video Editing**: Edit existing videos based on textual commands.
 - **Audio Editing**: Edit existing audio (songs/gojols) based on textual commands.
-- **Gemini Pro Integration**: Utilizes Google Gemini Pro for general conversational AI.
+- **Gemini 3 & Base44 Integration**: Utilizes Google Gemini 3 Flash and Base44 for advanced AI capabilities.
+- **Google Search Grounding**: Real-time information access via Google Search.
+- **Music & Video Generation**: Advanced media generation using Lyria and Veo 3 models.
 
 ## Setup Instructions
 
@@ -29,6 +31,8 @@ This is a Telegram bot that leverages AI to provide various media generation and
     ```
     BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
     GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+    BASE44_API_KEY=2015b471f7c44bd9934ed539a82b1030
+    USE_BASE44=true
     MONGODB_URI=YOUR_MONGODB_CONNECTION_STRING
     ```
     -   `YOUR_TELEGRAM_BOT_TOKEN`: Obtain this from BotFather on Telegram.
