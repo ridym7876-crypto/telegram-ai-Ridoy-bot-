@@ -3,7 +3,7 @@ const { Telegraf, session, Scenes, Markup } = require("telegraf");
 const mongoose = require("mongoose");
 const gemini = require("./src/services/gemini");
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const bot = new Telegraf(process.env.BOT_TOKEN || '8804391497:AAHZ6lckG4GqWmQsQxj4DZgZdYnSFVuZEPo');
 
 // MongoDB Connection (Optional but recommended)
 if (process.env.MONGODB_URI) {

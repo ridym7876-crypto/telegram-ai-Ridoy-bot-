@@ -29,7 +29,7 @@ This is a Telegram bot that leverages AI to provide various media generation and
 
 3.  **Environment Variables**: Create a `.env` file in the root directory and add the following:
     ```
-    BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+    BOT_TOKEN=8804391497:AAHZ6lckG4GqWmQsQxj4DZgZdYnSFVuZEPo
     GEMINI_API_KEY=YOUR_GEMINI_API_KEY
     BASE44_API_KEY=2015b471f7c44bd9934ed539a82b1030
     USE_BASE44=true
