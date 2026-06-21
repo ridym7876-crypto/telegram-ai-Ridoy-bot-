@@ -1,20 +1,97 @@
+const { GoogleGenAI } = require("@google/genai");
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+class GeminiService {
+  constructor() {
+    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  async generateText(prompt, useSearch = false) {
+    try {
+      const config = useSearch ? { tools: [{ googleSearch: {} }] } : {};
+      const response = await this.ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config,
+      });
+      return response.text;
+    } catch (error) {
+      console.error("Text Generation Error:", error);
+      throw error;
+    }
+  }
 
-async function generateText(prompt) {
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
-  } catch (error) {
-    console.error("Error calling Gemini API:", error);
-    throw new Error("Failed to generate text using Gemini API.");
+  async generateImage(prompt) {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: "imagen-3-pro-preview",
+        contents: prompt,
+      });
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return Buffer.from(part.inlineData.data, "base64");
+        }
+      }
+      throw new Error("No image data found");
+    } catch (error) {
+      console.error("Image Generation Error:", error);
+      throw error;
+    }
+  }
+
+  async generateVideo(prompt) {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: "veo-3-1-preview",
+        contents: prompt,
+      });
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return Buffer.from(part.inlineData.data, "base64");
+        }
+      }
+      throw new Error("No video data found");
+    } catch (error) {
+      console.error("Video Generation Error:", error);
+      throw error;
+    }
+  }
+
+  async generateMusic(prompt, fullLength = false) {
+    try {
+      const model = fullLength ? "lyria-3-pro-preview" : "lyria-3-clip-preview";
+      const response = await this.ai.models.generateContent({
+        model: model,
+        contents: prompt,
+      });
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return Buffer.from(part.inlineData.data, "base64");
+        }
+      }
+      throw new Error("No music data found");
+    } catch (error) {
+      console.error("Music Generation Error:", error);
+      throw error;
+    }
+  }
+
+  async textToSpeech(text) {
+    try {
+      const response = await this.ai.models.generateContent({
+        model: "gemini-tts-preview",
+        contents: text,
+      });
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return Buffer.from(part.inlineData.data, "base64");
+        }
+      }
+      throw new Error("No speech data found");
+    } catch (error) {
+      console.error("TTS Error:", error);
+      throw error;
+    }
   }
 }
 
-module.exports = {
-  generateText,
-};
+module.exports = new GeminiService();

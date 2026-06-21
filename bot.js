@@ -1,75 +1,82 @@
-
 require("dotenv").config();
-const { Telegraf, session, Scenes } = require("telegraf");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { Telegraf, session, Scenes, Markup } = require("telegraf");
 const mongoose = require("mongoose");
+const gemini = require("./src/services/gemini");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
-
-// Import scenes
-const imageScene = require("./src/commands/image");
-const videoScene = require("./src/commands/video");
-const songScene = require("./src/commands/song");
-
-// Create a stage for the scenes
-const stage = new Scenes.Stage([imageScene, videoScene, songScene]);
+// MongoDB Connection (Optional but recommended)
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log("MongoDB Connected"))
+    .catch((err) => console.error("MongoDB connection error:", err));
+}
 
 // Middleware
 bot.use(session());
-bot.use(stage.middleware());
 
-// Import commands
-const startCommand = require("./src/commands/start");
+// Start Command
+bot.start(async (ctx) => {
+  const welcomeMessage = `স্বাগতম! আমি আপনার উন্নত AI সহকারী। আমি নিচের কাজগুলো করতে পারি:
 
-// Register commands
-bot.start(startCommand);
+🎥 *Generate Video*: টেক্সট থেকে ভিডিও তৈরি (Veo 3)
+🖼 *Generate Image*: উচ্চমানের ছবি তৈরি (Nano Banana Pro)
+🔍 *Google Search*: রিয়েল-টাইম তথ্য অনুসন্ধান
+🎬 *Animate Image*: ছবি থেকে ভিডিও তৈরি
+🎙 *Voice Chat*: Gemini Live API এর মাধ্যমে কথা বলা
+✏️ *Edit Image*: ছবি এডিট করা
+🎵 *Generate Music*: মিউজিক তৈরি (Lyria)
+🗣 *Text to Speech*: টেক্সট থেকে ভয়েস তৈরি
 
-bot.action("image_gen", (ctx) => ctx.scene.enter("image_gen"));
-bot.action("video_gen", (ctx) => ctx.scene.enter("video_gen"));
-bot.action("audio_gen", (ctx) => ctx.scene.enter("audio_gen"));
+নিচের বাটনগুলো ব্যবহার করে শুরু করুন:`;
 
-bot.action("image_edit", async (ctx) => {
-  await ctx.reply("ছবি এডিট করার জন্য, প্রথমে ছবিটি আপলোড করুন এবং তারপর আপনার এডিটিং এর বর্ণনা দিন।");
+  const keyboard = Markup.inlineKeyboard([
+    [Markup.button.callback("🎥 ভিডিও তৈরি", "gen_video"), Markup.button.callback("🖼 ছবি তৈরি", "gen_image")],
+    [Markup.button.callback("🔍 গুগল সার্চ", "google_search"), Markup.button.callback("🎬 ছবি অ্যানিমেট", "animate_img")],
+    [Markup.button.callback("🎙 ভয়েস চ্যাট", "voice_chat"), Markup.button.callback("✏️ ছবি এডিট", "edit_image")],
+    [Markup.button.callback("🎵 মিউজিক তৈরি", "gen_music"), Markup.button.callback("🗣 ভয়েস তৈরি (TTS)", "gen_tts")]
+  ]);
+
+  await ctx.replyWithMarkdown(welcomeMessage, keyboard);
 });
-bot.action("video_edit", async (ctx) => {
-  await ctx.reply("ভিডিও এডিট করার জন্য, প্রথমে ভিডিওটি আপলোড করুন এবং তারপর আপনার এডিটিং এর বর্ণনা দিন।");
-});
-bot.action("audio_edit", async (ctx) => {
-  await ctx.reply("গান/গজল এডিট করার জন্য, প্রথমে অডিওটি আপলোড করুন এবং তারপর আপনার এডিটিং এর বর্ণনা দিন।");
-});
 
-// Generic text handler for Gemini Pro (if not in a scene)
+// Action Handlers
+bot.action("gen_video", (ctx) => ctx.reply("ভিডিওর জন্য একটি বর্ণনা (Prompt) দিন:"));
+bot.action("gen_image", (ctx) => ctx.reply("ছবির জন্য একটি বর্ণনা (Prompt) দিন:"));
+bot.action("google_search", (ctx) => ctx.reply("আপনি কি খুঁজতে চান?"));
+bot.action("gen_music", (ctx) => ctx.reply("কেমন মিউজিক চান? বর্ণনা দিন:"));
+bot.action("gen_tts", (ctx) => ctx.reply("যে টেক্সটটি ভয়েস করতে চান তা লিখুন:"));
+
+// Generic Message Handler
 bot.on("text", async (ctx) => {
-  if (!ctx.scene.current) {
-    try {
-      const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-      const prompt = ctx.message.text;
+  const text = ctx.message.text;
+  const loadingMsg = await ctx.reply("প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
-      await ctx.reply(text);
-    } catch (error) {
-      console.error("Error with Gemini API:", error);
-      await ctx.reply("দুঃখিত, আপনার অনুরোধ প্রক্রিয়া করতে পারিনি।");
+  try {
+    // Simple logic to detect intent or use last action (for simplicity in this example)
+    // In a real bot, scenes would be better
+    if (text.toLowerCase().includes("search") || text.length > 50) {
+       const response = await gemini.generateText(text, true);
+       await ctx.reply(response);
+    } else {
+       const response = await gemini.generateText(text);
+       await ctx.reply(response);
     }
+  } catch (error) {
+    console.error(error);
+    await ctx.reply("দুঃখিত, কোনো সমস্যা হয়েছে।");
+  } finally {
+    await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
   }
 });
 
-// Launch bot
-bot.launch();
+// Handling Photo for Animation/Editing
+bot.on("photo", async (ctx) => {
+  await ctx.reply("ছবিটি পেয়েছি। আপনি কি এটি অ্যানিমেট করতে চান নাকি এডিট করতে চান?");
+});
 
-console.log("Bot started");
+// Launch bot
+bot.launch().then(() => console.log("Bot is running..."));
 
 // Enable graceful stop
 process.once("SIGINT", () => bot.stop("SIGINT"));
