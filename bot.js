@@ -6,13 +6,11 @@ const gemini = require("./src/services/gemini");
 const TOKEN = '8804391497:AAHZ6lckG4GqWmQsQxj4DZgZdYnSFVuZEPo';
 const bot = new Telegraf(TOKEN);
 
-// MongoDB Connection (Optional but recommended)
+// MongoDB Connection
 if (process.env.MONGODB_URI && process.env.MONGODB_URI.startsWith('mongodb')) {
   mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log("MongoDB Connected"))
     .catch((err) => console.error("MongoDB connection error:", err));
-} else {
-  console.log("MongoDB URI not set or invalid, skipping connection.");
 }
 
 // Middleware
@@ -43,26 +41,98 @@ bot.start(async (ctx) => {
   await ctx.replyWithMarkdown(welcomeMessage, keyboard);
 });
 
-// Generic Message Handler
+// Action Handlers
+bot.action("gen_video", (ctx) => {
+  ctx.session.state = "waiting_for_video_prompt";
+  return ctx.reply("🎥 ভিডিওর জন্য একটি বর্ণনা (Prompt) দিন:");
+});
+
+bot.action("gen_image", (ctx) => {
+  ctx.session.state = "waiting_for_image_prompt";
+  return ctx.reply("🖼 ছবির জন্য একটি বর্ণনা (Prompt) দিন:");
+});
+
+bot.action("google_search", (ctx) => {
+  ctx.session.state = "waiting_for_search_query";
+  return ctx.reply("🔍 আপনি কি খুঁজতে চান? প্রশ্নটি লিখুন:");
+});
+
+bot.action("gen_music", (ctx) => {
+  ctx.session.state = "waiting_for_music_prompt";
+  return ctx.reply("🎵 কেমন মিউজিক চান? বর্ণনা দিন:");
+});
+
+bot.action("gen_tts", (ctx) => {
+  ctx.session.state = "waiting_for_tts_text";
+  return ctx.reply("🗣 যে টেক্সটটি ভয়েস করতে চান তা লিখুন:");
+});
+
+bot.action("animate_img", (ctx) => {
+  ctx.session.state = "waiting_for_animate_photo";
+  return ctx.reply("🎬 অ্যানিমেট করার জন্য একটি ছবি পাঠান:");
+});
+
+bot.action("edit_image", (ctx) => {
+  ctx.session.state = "waiting_for_edit_photo";
+  return ctx.reply("✏️ এডিট করার জন্য একটি ছবি পাঠান:");
+});
+
+bot.action("voice_chat", (ctx) => {
+  ctx.session.state = "waiting_for_voice";
+  return ctx.reply("🎙 ভয়েস চ্যাট শুরু করতে একটি ভয়েস মেসেজ পাঠান:");
+});
+
+// Message Handler
 bot.on("text", async (ctx) => {
   const text = ctx.message.text;
+  const state = ctx.session.state;
   const loadingMsg = await ctx.reply("প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
 
   try {
-    const response = await gemini.generateText(text);
-    await ctx.reply(response);
+    switch (state) {
+      case "waiting_for_video_prompt":
+        const videoBuffer = await gemini.generateVideo(text);
+        await ctx.replyWithVideo({ source: videoBuffer });
+        break;
+      case "waiting_for_image_prompt":
+        const imageBuffer = await gemini.generateImage(text);
+        await ctx.replyWithPhoto({ source: imageBuffer });
+        break;
+      case "waiting_for_search_query":
+        const searchResult = await gemini.generateText(text, true);
+        await ctx.reply(searchResult);
+        break;
+      case "waiting_for_music_prompt":
+        const musicBuffer = await gemini.generateMusic(text);
+        await ctx.replyWithAudio({ source: musicBuffer });
+        break;
+      case "waiting_for_tts_text":
+        const ttsBuffer = await gemini.textToSpeech(text);
+        await ctx.replyWithVoice({ source: ttsBuffer });
+        break;
+      default:
+        const normalResponse = await gemini.generateText(text);
+        await ctx.reply(normalResponse);
+    }
   } catch (error) {
     console.error(error);
-    await ctx.reply("দুঃখিত, কোনো সমস্যা হয়েছে।");
+    await ctx.reply("দুঃখিত, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। আপনার এপিআই কী বা কোটায় সমস্যা থাকতে পারে।");
   } finally {
+    ctx.session.state = null; // Reset state
     await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
   }
 });
 
+// Photo Handler
+bot.on("photo", async (ctx) => {
+  if (ctx.session.state === "waiting_for_animate_photo" || ctx.session.state === "waiting_for_edit_photo") {
+    await ctx.reply("ছবিটি পেয়েছি! এটি প্রসেস করার জন্য প্রয়োজনীয় এপিআই মেথডগুলো বর্তমানে ডেভেলপমেন্টে আছে। শীঘ্রই এটি কাজ করবে।");
+    ctx.session.state = null;
+  }
+});
+
 // Launch bot
-bot.launch()
-  .then(() => console.log("Bot is running successfully!"))
-  .catch((err) => console.error("Bot launch failed:", err));
+bot.launch().then(() => console.log("Bot updated and running!"));
 
 // Enable graceful stop
 process.once("SIGINT", () => bot.stop("SIGINT"));
