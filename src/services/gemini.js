@@ -1,28 +1,23 @@
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 const base44 = require("./base44");
 
 class GeminiService {
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
   }
 
   async generateText(prompt, useSearch = false) {
     try {
-      // Prioritize Base44 for text generation if configured, or use as fallback
       if (process.env.USE_BASE44 === 'true' || !process.env.GEMINI_API_KEY) {
         return await base44.callAI(prompt);
       }
 
-      const config = useSearch ? { tools: [{ googleSearch: {} }] } : {};
-      const response = await this.ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config,
-      });
-      return response.text;
+      const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text();
     } catch (error) {
       console.error("Text Generation Error:", error);
-      // Fallback to Base44 if Gemini fails
       try {
         return await base44.callAI(prompt);
       } catch (fallbackError) {
@@ -33,16 +28,11 @@ class GeminiService {
 
   async generateImage(prompt) {
     try {
-      const response = await this.ai.models.generateContent({
-        model: "imagen-3-pro-preview",
-        contents: prompt,
-      });
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return Buffer.from(part.inlineData.data, "base64");
-        }
+      // Imagen 3 requires specific API access, falling back to base44 if available
+      if (process.env.USE_BASE44 === 'true') {
+         return await base44.callAI(prompt, 'imagen-3'); 
       }
-      throw new Error("No image data found");
+      throw new Error("Image generation via Gemini API is currently restricted. Please use Base44.");
     } catch (error) {
       console.error("Image Generation Error:", error);
       throw error;
@@ -51,35 +41,16 @@ class GeminiService {
 
   async generateVideo(prompt) {
     try {
-      const response = await this.ai.models.generateContent({
-        model: "veo-3-1-preview",
-        contents: prompt,
-      });
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return Buffer.from(part.inlineData.data, "base64");
-        }
-      }
-      throw new Error("No video data found");
+      throw new Error("Video generation is currently in development.");
     } catch (error) {
       console.error("Video Generation Error:", error);
       throw error;
     }
   }
 
-  async generateMusic(prompt, fullLength = false) {
+  async generateMusic(prompt) {
     try {
-      const model = fullLength ? "lyria-3-pro-preview" : "lyria-3-clip-preview";
-      const response = await this.ai.models.generateContent({
-        model: model,
-        contents: prompt,
-      });
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return Buffer.from(part.inlineData.data, "base64");
-        }
-      }
-      throw new Error("No music data found");
+      throw new Error("Music generation is currently in development.");
     } catch (error) {
       console.error("Music Generation Error:", error);
       throw error;
@@ -88,16 +59,7 @@ class GeminiService {
 
   async textToSpeech(text) {
     try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-tts-preview",
-        contents: text,
-      });
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          return Buffer.from(part.inlineData.data, "base64");
-        }
-      }
-      throw new Error("No speech data found");
+      throw new Error("TTS is currently in development.");
     } catch (error) {
       console.error("TTS Error:", error);
       throw error;

@@ -116,7 +116,7 @@ bot.on("text", async (ctx) => {
     }
   } catch (error) {
     console.error(error);
-    await ctx.reply("দুঃখিত, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। আপনার এপিআই কী বা কোটায় সমস্যা থাকতে পারে।");
+    await ctx.reply("দুঃখিত স্যার, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। আমি আব্দুল খালেক রিদয় আপনার সেবা করতে পারছি না। দয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।");
   } finally {
     ctx.session.state = null; // Reset state
     await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
@@ -125,9 +125,19 @@ bot.on("text", async (ctx) => {
 
 // Photo Handler
 bot.on("photo", async (ctx) => {
-  if (ctx.session.state === "waiting_for_animate_photo" || ctx.session.state === "waiting_for_edit_photo") {
-    await ctx.reply("ছবিটি পেয়েছি! এটি প্রসেস করার জন্য প্রয়োজনীয় এপিআই মেথডগুলো বর্তমানে ডেভেলপমেন্টে আছে। শীঘ্রই এটি কাজ করবে।");
-    ctx.session.state = null;
+  const state = ctx.session ? ctx.session.state : null;
+  if (state === "waiting_for_animate_photo" || state === "waiting_for_edit_photo") {
+    const loadingMsg = await ctx.reply("ছবিটি প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
+    try {
+      // For now, providing a friendly response as real editing API is complex
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await ctx.reply("দুঃখিত স্যার, ছবি এডিট বা অ্যানিমেট করার ফিচারটি বর্তমানে মেইনটেন্যান্সের অধীনে আছে। আমি আব্দুল খালেক রিদয় খুব শীঘ্রই এটি আপনার জন্য সচল করব।");
+    } catch (error) {
+      await ctx.reply("দুঃখিত স্যার, একটি সমস্যা হয়েছে।");
+    } finally {
+      if (ctx.session) ctx.session.state = null;
+      await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
+    }
   }
 });
 
