@@ -11,6 +11,8 @@ if (process.env.MONGODB_URI && process.env.MONGODB_URI.startsWith('mongodb')) {
   mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log("MongoDB Connected"))
     .catch((err) => console.error("MongoDB connection error:", err));
+} else {
+  console.log("MongoDB URI not found or invalid, skipping connection...");
 }
 
 // Middleware
