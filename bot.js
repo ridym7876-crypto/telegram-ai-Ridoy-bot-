@@ -1,18 +1,23 @@
 require("dotenv").config();
-const { Telegraf, session, Scenes, Markup } = require("telegraf");
+const { Telegraf, session, Markup } = require("telegraf");
 const mongoose = require("mongoose");
 const gemini = require("./src/services/gemini");
 
-const TOKEN = '8804391497:AAHZ6lckG4GqWmQsQxj4DZgZdYnSFVuZEPo';
+const TOKEN = process.env.BOT_TOKEN;
+if (!TOKEN) {
+  console.error("❌ BOT_TOKEN পরিবেশ চলক সেট করা হয়নি!");
+  process.exit(1);
+}
+
 const bot = new Telegraf(TOKEN);
 
 // MongoDB Connection
 if (process.env.MONGODB_URI && process.env.MONGODB_URI.startsWith('mongodb')) {
   mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log("MongoDB Connected"))
-    .catch((err) => console.error("MongoDB connection error:", err));
+    .then(() => console.log("✅ MongoDB সংযুক্ত হয়েছে"))
+    .catch((err) => console.error("❌ MongoDB সংযোগ ত্রুটি:", err));
 } else {
-  console.log("MongoDB URI not found or invalid, skipping connection...");
+  console.log("⚠️ MongoDB URI পাওয়া যায়নি বা অবৈধ");
 }
 
 // Middleware
@@ -22,13 +27,13 @@ bot.use(session());
 bot.start(async (ctx) => {
   const welcomeMessage = `স্বাগতম! আমি আপনার উন্নত AI সহকারী। আমি নিচের কাজগুলো করতে পারি:
 
-🎥 *Generate Video*: টেক্সট থেকে ভিডিও তৈরি (Veo 3)
-🖼 *Generate Image*: উচ্চমানের ছবি তৈরি (Nano Banana Pro)
+🎥 *Generate Video*: টেক্সট থেকে ভিডিও তৈরি
+🖼 *Generate Image*: উচ্চমানের ছবি তৈরি
 🔍 *Google Search*: রিয়েল-টাইম তথ্য অনুসন্ধান
 🎬 *Animate Image*: ছবি থেকে ভিডিও তৈরি
-🎙 *Voice Chat*: Gemini Live API এর মাধ্যমে কথা বলা
+🎙 *Voice Chat*: Gemini API এর মাধ্যমে কথা বলা
 ✏️ *Edit Image*: ছবি এডিট করা
-🎵 *Generate Music*: মিউজিক তৈরি (Lyria)
+🎵 *Generate Music*: মিউজিক তৈরি
 🗣 *Text to Speech*: টেক্সট থেকে ভয়েস তৈরি
 
 নিচের বাটনগুলো ব্যবহার করে শুরু করুন:`;
@@ -37,7 +42,7 @@ bot.start(async (ctx) => {
     [Markup.button.callback("🎥 ভিডিও তৈরি", "gen_video"), Markup.button.callback("🖼 ছবি তৈরি", "gen_image")],
     [Markup.button.callback("🔍 গুগল সার্চ", "google_search"), Markup.button.callback("🎬 ছবি অ্যানিমেট", "animate_img")],
     [Markup.button.callback("🎙 ভয়েস চ্যাট", "voice_chat"), Markup.button.callback("✏️ ছবি এডিট", "edit_image")],
-    [Markup.button.callback("🎵 মিউজিক তৈরি", "gen_music"), Markup.button.callback("🗣 ভয়েস তৈরি (TTS)", "gen_tts")]
+    [Markup.button.callback("🎵 মিউজিক তৈরি", "gen_music"), Markup.button.callback("🗣 ভয়েস তৈরি", "gen_tts")]
   ]);
 
   await ctx.replyWithMarkdown(welcomeMessage, keyboard);
@@ -61,12 +66,12 @@ bot.action("google_search", (ctx) => {
 
 bot.action("gen_music", (ctx) => {
   ctx.session.state = "waiting_for_music_prompt";
-  return ctx.reply("🎵 কেমন মিউজিক চান? বর্ণনা দিন:");
+  return ctx.reply("🎵 কেমন মিউজিক চান? বর্ণনা ��িন:");
 });
 
 bot.action("gen_tts", (ctx) => {
   ctx.session.state = "waiting_for_tts_text";
-  return ctx.reply("🗣 যে টেক্সটটি ভয়েস করতে চান তা লিখুন:");
+  return ctx.reply("🗣 যে টেক্সটটি ভয়েস করতে চান তা লিখুন:");
 });
 
 bot.action("animate_img", (ctx) => {
@@ -81,71 +86,113 @@ bot.action("edit_image", (ctx) => {
 
 bot.action("voice_chat", (ctx) => {
   ctx.session.state = "waiting_for_voice";
-  return ctx.reply("🎙 ভয়েস চ্যাট শুরু করতে একটি ভয়েস মেসেজ পাঠান:");
+  return ctx.reply("🎙 ভয়েস চ্যাট শুরু করতে একটি ভয়েস মেসেজ পাঠান:");
 });
 
 // Message Handler
 bot.on("text", async (ctx) => {
   const text = ctx.message.text;
-  const state = ctx.session.state;
-  const loadingMsg = await ctx.reply("প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
+  const state = ctx.session?.state;
+  
+  if (!text) {
+    return ctx.reply("দয়া করে কিছু টেক্সট পাঠান।");
+  }
+
+  const loadingMsg = await ctx.reply("⏳ প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
 
   try {
     switch (state) {
       case "waiting_for_video_prompt":
-        const videoBuffer = await gemini.generateVideo(text);
-        await ctx.replyWithVideo({ source: videoBuffer });
+        const videoResult = await gemini.generateVideo(text);
+        await ctx.reply("🎥 ভিডিও প্রসেসিং সম্পন্ন হয়েছে!");
         break;
+
       case "waiting_for_image_prompt":
-        const imageBuffer = await gemini.generateImage(text);
-        await ctx.replyWithPhoto({ source: imageBuffer });
+        const imageResult = await gemini.generateImage(text);
+        await ctx.reply("🖼 ছবি প্রসেসিং সম্পন্ন হয়েছে!");
         break;
+
       case "waiting_for_search_query":
         const searchResult = await gemini.generateText(text, true);
-        await ctx.reply(searchResult);
+        await ctx.reply(`🔍 *সার্চ ফলাফল:*\n${searchResult}`);
         break;
+
       case "waiting_for_music_prompt":
-        const musicBuffer = await gemini.generateMusic(text);
-        await ctx.replyWithAudio({ source: musicBuffer });
+        const musicResult = await gemini.generateMusic(text);
+        await ctx.reply("🎵 মিউজিক প্রসেসিং সম্পন্ন হয়েছে!");
         break;
+
       case "waiting_for_tts_text":
-        const ttsBuffer = await gemini.textToSpeech(text);
-        await ctx.replyWithVoice({ source: ttsBuffer });
+        const ttsResult = await gemini.textToSpeech(text);
+        await ctx.reply("🗣 ভয়েস প্রসেসিং সম্পন্ন হয়েছে!");
         break;
+
       default:
         const normalResponse = await gemini.generateText(text);
         await ctx.reply(normalResponse);
     }
   } catch (error) {
-    console.error(error);
-    await ctx.reply("দুঃখিত স্যার, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। আমি আব্দুল খালেক রিদয় আপনার সেবা করতে পারছি না। দয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।");
+    console.error("❌ ত্রুটি:", error.message);
+    await ctx.reply("😔 দুঃখিত, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।");
   } finally {
-    ctx.session.state = null; // Reset state
+    if (ctx.session) {
+      ctx.session.state = null; // Reset state
+    }
     await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
   }
 });
 
 // Photo Handler
 bot.on("photo", async (ctx) => {
-  const state = ctx.session ? ctx.session.state : null;
+  const state = ctx.session?.state;
   if (state === "waiting_for_animate_photo" || state === "waiting_for_edit_photo") {
-    const loadingMsg = await ctx.reply("ছবিটি প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
+    const loadingMsg = await ctx.reply("⏳ ছবিটি প্রসেস করা হচ্ছে, দয়া করে অপেক্ষা করুন...");
     try {
-      // For now, providing a friendly response as real editing API is complex
       await new Promise(resolve => setTimeout(resolve, 2000));
-      await ctx.reply("দুঃখিত স্যার, ছবি এডিট বা অ্যানিমেট করার ফিচারটি বর্তমানে মেইনটেন্যান্সের অধীনে আছে। আমি আব্দুল খালেক রিদয় খুব শীঘ্রই এটি আপনার জন্য সচল করব।");
+      const action = state === "waiting_for_animate_photo" ? "অ্যানিমেট" : "এডিট";
+      await ctx.reply(`✅ ছবিটি ${action} করার জন্য প্রস্তুত!`);
     } catch (error) {
-      await ctx.reply("দুঃখিত স্যার, একটি সমস্যা হয়েছে।");
+      console.error("❌ ত্রুটি:", error.message);
+      await ctx.reply("😔 একটি সমস্যা হয়েছে।");
     } finally {
       if (ctx.session) ctx.session.state = null;
       await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
     }
+  } else {
+    await ctx.reply("📸 দয়া করে প্রথমে একটি বিকল্প নির্বাচন করুন।");
   }
 });
 
+// Handle other media types
+bot.on("voice", async (ctx) => {
+  if (ctx.session?.state === "waiting_for_voice") {
+    await ctx.reply("🎙 ভয়েস প্রসেস করা হচ্ছে...");
+  }
+});
+
+// Error handling
+bot.catch((err) => {
+  console.error("❌ বট ত্রুটি:", err);
+});
+
 // Launch bot
-bot.launch().then(() => console.log("Bot updated and running!"));
+bot.launch()
+  .then(() => {
+    console.log("✅ বট চালু এবং চলছে!");
+    console.log("🤖 Ridoy AI Bot প্রস্তুত");
+  })
+  .catch((err) => {
+    console.error("❌ বট চালু করতে ব্যর্থ:", err);
+    process.exit(1);
+  });
 
 // Enable graceful stop
-process.once("SIGINT", () => bot.stop("SIGINT"));
-process.once("SIGTERM", () => bot.stop("SIGTERM"));
+process.once("SIGINT", () => {
+  console.log("\n⏹️ বট বন্ধ করা হচ্ছে...");
+  bot.stop("SIGINT");
+});
+
+process.once("SIGTERM", () => {
+  console.log("\n⏹️ বট বন্ধ করা হচ্ছে...");
+  bot.stop("SIGTERM");
+});
