@@ -5,14 +5,34 @@ const audioGen = require("./audioGenerator");
 
 class GeminiService {
   constructor() {
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+    this.hasGeminiKey = !!process.env.GEMINI_API_KEY;
+    this.useBase44 = (process.env.USE_BASE44 || 'false').toLowerCase() === 'true';
+
+    if (this.hasGeminiKey) {
+      // Initialize client if API key is present.
+      // NOTE: Depending on the @google/generative-ai package version, the constructor/usage may differ.
+      // This keeps the existing pattern but only initializes when a key is provided.
+      try {
+        this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      } catch (err) {
+        console.warn('Warning: Could not initialize GoogleGenerativeAI client:', err?.message || err);
+        this.genAI = null;
+      }
+    } else {
+      this.genAI = null;
+    }
   }
 
   async generateText(prompt, useSearch = false) {
+    // Priority: If USE_BASE44=true -> use base44. Else if Gemini key present -> use Gemini. Else give instruction message.
     try {
-      if (process.env.USE_BASE44 === 'true' || !process.env.GEMINI_API_KEY) {
+      if (this.useBase44) {
         const res = await base44.callAI(prompt);
         return typeof res === 'string' ? res : (res || 'কোথাও কিছু উত্তর পাওয়া যায়নি।');
+      }
+
+      if (!this.genAI) {
+        return 'GPT / Gemini API কী সেট করা হয়নি। আপনার .env ফাইলে GEMINI_API_KEY যোগ করুন অথবা USE_BASE44=true সেট করে Base44 ব্যবহার করুন।';
       }
 
       const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -22,6 +42,7 @@ class GeminiService {
       return text || 'কোথাও কিছু উত্তর পাওয়া যায়নি।';
     } catch (error) {
       console.error("Text Generation Error:", error?.message || error);
+      // Try fallback to Base44 if available
       try {
         const fallback = await base44.callAI(prompt);
         return typeof fallback === 'string' ? fallback : (fallback || 'কোথাও কিছু উত্তর পাওয়া যায়নি।');
@@ -34,10 +55,16 @@ class GeminiService {
 
   async generateImage(prompt) {
     try {
-      if (process.env.USE_BASE44 === 'true') {
+      if (this.useBase44) {
         const res = await base44.callAI(`Generate an image or an image prompt for: ${prompt}`);
         return typeof res === 'string' ? res : 'Image generation অনুরোধ পাঠানো হয়েছে।';
       }
+
+      if (!this.genAI) {
+        return 'Image generation সক্ষম করতে GEMINI_API_KEY নির্ধারণ করুন অথবা USE_BASE44=true সেট করুন।';
+      }
+
+      // Placeholder: implement Gemini image generation when integrated.
       return 'Image generation বর্তমানে অনুপলব্ধ — অনুগ্রহ করে later বা Base44 সক্রিয় করুন।';
     } catch (error) {
       console.error("Image Generation Error:", error?.message || error);
@@ -47,7 +74,6 @@ class GeminiService {
 
   async generateVideo(prompt) {
     try {
-      // Prefer a dedicated video generator module (placeholder implementation provided)
       const url = await videoGen.generateVideo(prompt);
       return url || 'Video generation অনুরোধ গৃহীত হয়েছে (placeholder)।';
     } catch (error) {
@@ -68,7 +94,6 @@ class GeminiService {
 
   async textToSpeech(text) {
     try {
-      // Use audio generator for TTS (placeholder mp3 returned)
       const url = await audioGen.generateAudio(text, 'tts');
       return url || 'TTS অনুরোধ গৃহীত হয়েছে (placeholder)।';
     } catch (error) {
