@@ -25,7 +25,7 @@ bot.use(session());
 
 // Start Command
 bot.start(async (ctx) => {
-  const welcomeMessage = `স্বাগতম! আমি আপনার উন্নত AI সহকারী। আমি নিচের কাজগুলো করতে পারি:
+  const welcomeMessage = `স্বাগতম! আ��ি আপনার উন্নত AI সহকারী। আমি নিচের কাজগুলো করতে পারি:
 
 🎥 *Generate Video*: টেক্সট থেকে ভিডিও তৈরি
 🖼 *Generate Image*: উচ্চমানের ছবি তৈরি
@@ -66,7 +66,7 @@ bot.action("google_search", (ctx) => {
 
 bot.action("gen_music", (ctx) => {
   ctx.session.state = "waiting_for_music_prompt";
-  return ctx.reply("🎵 কেমন মিউজিক চান? বর্ণনা ��িন:");
+  return ctx.reply("🎵 কেমন মিউজিক চান? বর্ণনা দিন:");
 });
 
 bot.action("gen_tts", (ctx) => {
@@ -114,7 +114,8 @@ bot.on("text", async (ctx) => {
 
       case "waiting_for_search_query":
         const searchResult = await gemini.generateText(text, true);
-        await ctx.reply(`🔍 *সার্চ ফলাফল:*\n${searchResult}`);
+        await ctx.reply(`🔍 *সার্চ ফলাফল:*
+${searchResult}`);
         break;
 
       case "waiting_for_music_prompt":
@@ -133,7 +134,7 @@ bot.on("text", async (ctx) => {
     }
   } catch (error) {
     console.error("❌ ত্রুটি:", error.message);
-    await ctx.reply("😔 দুঃখিত, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। দয়া করে পুনরায় চেষ্টা করুন।");
+    await ctx.reply("😔 দুঃখিত, অনুরোধটি প্রসেস করার সময় একটি সমস্যা হয়েছে। পরে আবার চেষ্টা করুন।");
   } finally {
     if (ctx.session) {
       ctx.session.state = null; // Reset state
@@ -159,7 +160,7 @@ bot.on("photo", async (ctx) => {
       await ctx.deleteMessage(loadingMsg.message_id).catch(() => {});
     }
   } else {
-    await ctx.reply("📸 দয়া করে প্রথমে একটি বিকল্প নির্বাচন করুন।");
+    await ctx.reply("📸 দয়া করে প্রথমে একটি বিকল্প নির্বাচন করুন。");
   }
 });
 
