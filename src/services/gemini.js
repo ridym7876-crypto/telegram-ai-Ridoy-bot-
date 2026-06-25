@@ -1,5 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const base44 = require("./base44");
+const videoGen = require("./videoGenerator");
+const audioGen = require("./audioGenerator");
 
 class GeminiService {
   constructor() {
@@ -33,12 +35,9 @@ class GeminiService {
   async generateImage(prompt) {
     try {
       if (process.env.USE_BASE44 === 'true') {
-        // Use Base44 as a textual/image-generation helper. The exact response depends on the API.
         const res = await base44.callAI(`Generate an image or an image prompt for: ${prompt}`);
         return typeof res === 'string' ? res : 'Image generation অনুরোধ পাঠানো হয়েছে।';
       }
-
-      // If no Base44 available, return a friendly message instead of throwing.
       return 'Image generation বর্তমানে অনুপলব্ধ — অনুগ্রহ করে later বা Base44 সক্রিয় করুন।';
     } catch (error) {
       console.error("Image Generation Error:", error?.message || error);
@@ -47,19 +46,35 @@ class GeminiService {
   }
 
   async generateVideo(prompt) {
-    // Placeholder implementation — keep non-throwing so bot remains responsive
-    console.warn('generateVideo called but not implemented.');
-    return 'Video generation এখনও ডেভেলপমেন্টে আছে। শীঘ্রই আপডেট করা হবে।';
+    try {
+      // Prefer a dedicated video generator module (placeholder implementation provided)
+      const url = await videoGen.generateVideo(prompt);
+      return url || 'Video generation অনুরোধ গৃহীত হয়েছে (placeholder)।';
+    } catch (error) {
+      console.error("Video Generation Error:", error?.message || error);
+      return 'Video generation বর্তমানে অনুপলব্ধ — পরে আবার চেষ্টা করুন।';
+    }
   }
 
   async generateMusic(prompt) {
-    console.warn('generateMusic called but not implemented.');
-    return 'Music generation এখনও ডেভেলপমেন্টে আছে।';
+    try {
+      const url = await audioGen.generateAudio(prompt, 'song');
+      return url || 'Music generation অনুরোধ গৃহীত হয়েছে (placeholder)।';
+    } catch (error) {
+      console.error("Music Generation Error:", error?.message || error);
+      return 'Music generation বর্তমানে অনুপলব্ধ — পরে আবার চেষ্টা করুন।';
+    }
   }
 
   async textToSpeech(text) {
-    console.warn('textToSpeech called but not implemented.');
-    return 'TTS ফিচারটি এখনও ডেভেলপমেন্টে আছে।';
+    try {
+      // Use audio generator for TTS (placeholder mp3 returned)
+      const url = await audioGen.generateAudio(text, 'tts');
+      return url || 'TTS অনুরোধ গৃহীত হয়েছে (placeholder)।';
+    } catch (error) {
+      console.error("TTS Error:", error?.message || error);
+      return 'TTS ফিচারটি বর্তমানে অনুপলব্ধ — পরে আবার চেষ্টা করুন।';
+    }
   }
 }
 
